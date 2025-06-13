@@ -21,28 +21,31 @@ jobs:
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
 
-      - name: Deploy to Dev VM
+      - name: Setup Deployment Directory
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEV_VM_IP }}
           username: ${{ secrets.DEV_VM_USER }}
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           script: |
-            # Create directory structure with proper permissions
-            sudo mkdir -p /var/www
-            sudo chown -R $USER:$USER /var/www
-            mkdir -p /var/www/app
-            
-            # Remove existing directory if it exists
-            if [ -d "/var/www/app" ]; then
-              rm -rf /var/www/app
+            # Setup directory with correct permissions (no sudo needed)
+            mkdir -p ~/app
+            if [ -d "~/app" ]; then
+              rm -rf ~/app
             fi
-            
-            # Clone fresh repository
-            git clone https://github.com/${{ github.repository }}.git /var/www/app
+
+      - name: Deploy Application
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_VM_IP }}
+          username: ${{ secrets.DEV_VM_USER }}
+          key: ${{ secrets.DEV_VM_SSH_KEY }}
+          script: |
+            # Clone repository
+            git clone https://github.com/${{ github.repository }}.git ~/app
             
             # Deploy application
-            cd /var/www/app
+            cd ~/app
             docker-compose down || true
             docker-compose up -d --build
 
@@ -68,23 +71,27 @@ jobs:
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
 
-      - name: Deploy to Staging VM
+      - name: Setup Deployment Directory
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_VM_IP }}
           username: ${{ secrets.STAGING_VM_USER }}
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           script: |
-            sudo mkdir -p /var/www
-            sudo chown -R $USER:$USER /var/www
-            mkdir -p /var/www/app
-            
-            if [ -d "/var/www/app" ]; then
-              rm -rf /var/www/app
+            mkdir -p ~/app
+            if [ -d "~/app" ]; then
+              rm -rf ~/app
             fi
-            
-            git clone https://github.com/${{ github.repository }}.git /var/www/app
-            cd /var/www/app
+
+      - name: Deploy Application
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_VM_IP }}
+          username: ${{ secrets.STAGING_VM_USER }}
+          key: ${{ secrets.STAGING_VM_SSH_KEY }}
+          script: |
+            git clone https://github.com/${{ github.repository }}.git ~/app
+            cd ~/app
             docker-compose down || true
             docker-compose up -d --build
 
@@ -116,22 +123,26 @@ jobs:
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
 
-      - name: Deploy to Production VM
+      - name: Setup Deployment Directory
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.PROD_VM_IP }}
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           script: |
-            sudo mkdir -p /var/www
-            sudo chown -R $USER:$USER /var/www
-            mkdir -p /var/www/app
-            
-            if [ -d "/var/www/app" ]; then
-              rm -rf /var/www/app
+            mkdir -p ~/app
+            if [ -d "~/app" ]; then
+              rm -rf ~/app
             fi
-            
-            git clone https://github.com/${{ github.repository }}.git /var/www/app
-            cd /var/www/app
+
+      - name: Deploy Application
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_VM_IP }}
+          username: ${{ secrets.PROD_VM_USER }}
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          script: |
+            git clone https://github.com/${{ github.repository }}.git ~/app
+            cd ~/app
             docker-compose down || true
             docker-compose up -d --build
