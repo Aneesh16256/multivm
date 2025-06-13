@@ -33,10 +33,18 @@ jobs:
           username: ${{ secrets.DEV_VM_USER }}
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           script: |
-            mkdir -p /var/www/app
+            # Ensure directory exists with proper permissions
+            if [ ! -d "/var/www/app" ]; then
+              sudo mkdir -p /var/www/app
+              sudo chown -R $USER:$USER /var/www/app
+            fi
+            
+            # Clone or update repository
             if [ ! -d "/var/www/app/.git" ]; then
               git clone ${{ github.repository_url }} /var/www/app
             fi
+            
+            # Deploy application
             cd /var/www/app
             git fetch origin
             git reset --hard origin/main
@@ -77,10 +85,18 @@ jobs:
           username: ${{ secrets.STAGING_VM_USER }}
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           script: |
-            mkdir -p /var/www/app
+            # Ensure directory exists with proper permissions
+            if [ ! -d "/var/www/app" ]; then
+              sudo mkdir -p /var/www/app
+              sudo chown -R $USER:$USER /var/www/app
+            fi
+            
+            # Clone or update repository
             if [ ! -d "/var/www/app/.git" ]; then
               git clone ${{ github.repository_url }} /var/www/app
             fi
+            
+            # Deploy application
             cd /var/www/app
             git fetch origin
             git reset --hard origin/main
@@ -127,10 +143,18 @@ jobs:
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           script: |
-            mkdir -p /var/www/app
+            # Ensure directory exists with proper permissions
+            if [ ! -d "/var/www/app" ]; then
+              sudo mkdir -p /var/www/app
+              sudo chown -R $USER:$USER /var/www/app
+            fi
+            
+            # Clone or update repository
             if [ ! -d "/var/www/app/.git" ]; then
               git clone ${{ github.repository_url }} /var/www/app
             fi
+            
+            # Deploy application
             cd /var/www/app
             git fetch origin
             git reset --hard origin/main
