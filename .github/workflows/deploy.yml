@@ -21,6 +21,7 @@ jobs:
         with:
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           name: id_rsa
+          known_hosts: "placeholder"
           config: |
             Host *
               StrictHostKeyChecking no
@@ -60,6 +61,7 @@ jobs:
         with:
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           name: id_rsa
+          known_hosts: "placeholder"
           config: |
             Host *
               StrictHostKeyChecking no
@@ -105,6 +107,7 @@ jobs:
         with:
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           name: id_rsa
+          known_hosts: "placeholder"
           config: |
             Host *
               StrictHostKeyChecking no
