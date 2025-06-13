@@ -20,7 +20,11 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.DEV_VM_SSH_KEY }}
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          name: id_rsa
+          config: |
+            Host *
+              StrictHostKeyChecking no
+              UserKnownHostsFile=/dev/null
 
       - name: Deploy to Dev VM
         uses: appleboy/ssh-action@v1
@@ -55,7 +59,11 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          name: id_rsa
+          config: |
+            Host *
+              StrictHostKeyChecking no
+              UserKnownHostsFile=/dev/null
 
       - name: Deploy to Staging VM
         uses: appleboy/ssh-action@v1
@@ -96,7 +104,11 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          name: id_rsa
+          config: |
+            Host *
+              StrictHostKeyChecking no
+              UserKnownHostsFile=/dev/null
 
       - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1
