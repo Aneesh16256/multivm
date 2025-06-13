@@ -11,7 +11,7 @@ jobs:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     environment: dev
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,12 +20,7 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.DEV_VM_SSH_KEY }}
-          name: id_rsa
-          known_hosts: "placeholder"
-          config: |
-            Host *
-              StrictHostKeyChecking no
-              UserKnownHostsFile=/dev/null
+          known_hosts: "dev"
 
       - name: Deploy to Dev VM
         uses: appleboy/ssh-action@v1
@@ -34,9 +29,12 @@ jobs:
           username: ${{ secrets.DEV_VM_USER }}
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           script: |
+            if [ ! -d /var/www/app ]; then
+              git clone https://github.com/${{ github.repository }} /var/www/app
+            fi
             cd /var/www/app
             git pull origin main
-            docker-compose down
+            docker-compose down || true
             docker-compose up -d --build
 
   # ====================== STAGING (Manual Approval) ======================
@@ -45,7 +43,7 @@ jobs:
     needs: deploy-dev
     runs-on: ubuntu-latest
     environment: staging
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -60,12 +58,7 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
-          name: id_rsa
-          known_hosts: "placeholder"
-          config: |
-            Host *
-              StrictHostKeyChecking no
-              UserKnownHostsFile=/dev/null
+          known_hosts: "staging"
 
       - name: Deploy to Staging VM
         uses: appleboy/ssh-action@v1
@@ -74,29 +67,32 @@ jobs:
           username: ${{ secrets.STAGING_VM_USER }}
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           script: |
+            if [ ! -d /var/www/app ]; then
+              git clone https://github.com/${{ github.repository }} /var/www/app
+            fi
             cd /var/www/app
             git pull origin main
-            docker-compose down
+            docker-compose down || true
             docker-compose up -d --build
 
-  # ====================== PROD (Manual Approval or Tag) ======================
+  # ====================== PROD (Manual Approval or Tag Trigger) ======================
   deploy-prod:
     name: Deploy to Production
     needs: deploy-staging
     runs-on: ubuntu-latest
     environment: prod
-    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
-
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Skip approval if tag exists
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        if: startsWith(github.ref, 'refs/tags/v')
         run: echo "Tag deployment - skipping approval"
 
       - name: Wait for Approval
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: !startsWith(github.ref, 'refs/tags/v')
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.token }}
@@ -106,12 +102,7 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          name: id_rsa
-          known_hosts: "placeholder"
-          config: |
-            Host *
-              StrictHostKeyChecking no
-              UserKnownHostsFile=/dev/null
+          known_hosts: "prod"
 
       - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1
@@ -120,7 +111,10 @@ jobs:
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           script: |
+            if [ ! -d /var/www/app ]; then
+              git clone https://github.com/${{ github.repository }} /var/www/app
+            fi
             cd /var/www/app
             git pull origin main
-            docker-compose down
+            docker-compose down || true
             docker-compose up -d --build
