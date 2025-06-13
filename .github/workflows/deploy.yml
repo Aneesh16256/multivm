@@ -1,115 +1,111 @@
-name: Multi-Environment Deployment
+name: GCP VM Deployment Pipeline
 
 on:
   push:
-    branches:
-      - main  # Trigger on main branch push
-    tags:
-      - 'v*'  # Trigger on version tags (e.g., v1.0.0)
-
-env:
-  AWS_REGION: 'us-east-1'  # Change if needed
-  ECR_REPOSITORY: 'your-ecr-repo'  # Change to your ECR repo
+    branches: [main]
+    tags: ['v*']
 
 jobs:
   # ====================== DEV (Automatic) ======================
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
-    environment: dev  # Matches GitHub environment
-
+    environment: dev
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # (Optional) Docker build & push (remove if not using containers)
-      - name: Log in to AWS ECR
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          key: ${{ secrets.DEV_VM_SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
-      - name: Build and push Docker image
-        run: |
-          docker build -t ${{ env.ECR_REPOSITORY }}:dev .
-          docker push ${{ env.ECR_REPOSITORY }}:dev
-
-      # Deploy to Dev VM via SSH
-      - name: SSH into Dev VM and deploy
+      - name: Deploy to Dev VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEV_VM_IP }}
           username: ${{ secrets.DEV_VM_USER }}
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           script: |
-            docker pull ${{ env.ECR_REPOSITORY }}:dev
+            cd /var/www/app
+            git pull origin main
             docker-compose down
-            docker-compose up -d
+            docker-compose up -d --build
 
   # ====================== STAGING (Manual Approval) ======================
   deploy-staging:
     name: Deploy to Staging
-    needs: deploy-dev  # Wait for dev to finish
+    needs: deploy-dev
     runs-on: ubuntu-latest
-    environment: staging  # Requires approval
-
+    environment: staging
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Manual approval step
-      - name: Wait for staging approval
+      - name: Wait for Approval
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.token }}
-          approvers: "team-lead,devops"  # Replace with your team
+          approvers: "team-lead"
 
-      # Deploy to Staging VM
-      - name: SSH into Staging VM
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.STAGING_VM_SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+
+      - name: Deploy to Staging VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_VM_IP }}
           username: ${{ secrets.STAGING_VM_USER }}
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           script: |
-            docker pull ${{ env.ECR_REPOSITORY }}:dev
+            cd /var/www/app
+            git pull origin main
             docker-compose down
-            docker-compose up -d
+            docker-compose up -d --build
 
   # ====================== PROD (Manual Approval OR Tag) ======================
   deploy-prod:
     name: Deploy to Production
-    needs: deploy-staging  # Wait for staging
+    needs: deploy-staging
     runs-on: ubuntu-latest
-    environment: prod  # Requires approval
+    environment: prod
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Skip approval if deploying via tag (e.g., git tag v1.0.0)
       - name: Skip approval if tag exists
         if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "Tag detected, skipping approval"
+        run: echo "Tag deployment - skipping approval"
 
-      # Manual approval required for non-tag deployments
-      - name: Wait for production approval
+      - name: Wait for Approval
         if: !startsWith(github.ref, 'refs/tags/v')
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.token }}
-          approvers: "prod-team,cto"  # Replace with your approvers
+          approvers: "cto"
 
-      # Deploy to Production VM
-      - name: SSH into Prod VM
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+
+      - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.PROD_VM_IP }}
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           script: |
-            docker pull ${{ env.ECR_REPOSITORY }}:dev
+            cd /var/www/app
+            git pull origin main
             docker-compose down
-            docker-compose up -d
+            docker-compose up -d --build
