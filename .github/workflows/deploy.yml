@@ -21,33 +21,27 @@ jobs:
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
 
-      - name: Setup Deployment Directory
+      - name: Deploy to Dev VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEV_VM_IP }}
           username: ${{ secrets.DEV_VM_USER }}
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           script: |
-            # Setup directory with correct permissions (no sudo needed)
-            mkdir -p ~/app
-            if [ -d "~/app" ]; then
-              rm -rf ~/app
-            fi
-
-      - name: Deploy Application
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEV_VM_IP }}
-          username: ${{ secrets.DEV_VM_USER }}
-          key: ${{ secrets.DEV_VM_SSH_KEY }}
-          script: |
+            # Create clean workspace
+            WORKSPACE=~/app_$(date +%s)
+            mkdir -p $WORKSPACE
+            
             # Clone repository
-            git clone https://github.com/${{ github.repository }}.git ~/app
+            git clone https://github.com/${{ github.repository }}.git $WORKSPACE
             
             # Deploy application
-            cd ~/app
+            cd $WORKSPACE
             docker-compose down || true
             docker-compose up -d --build
+            
+            # Cleanup old deployments (keep last 3)
+            ls -td ~/app_* | tail -n +4 | xargs rm -rf
 
   deploy-staging:
     name: Deploy to Staging
@@ -71,29 +65,20 @@ jobs:
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
 
-      - name: Setup Deployment Directory
+      - name: Deploy to Staging VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_VM_IP }}
           username: ${{ secrets.STAGING_VM_USER }}
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           script: |
-            mkdir -p ~/app
-            if [ -d "~/app" ]; then
-              rm -rf ~/app
-            fi
-
-      - name: Deploy Application
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.STAGING_VM_IP }}
-          username: ${{ secrets.STAGING_VM_USER }}
-          key: ${{ secrets.STAGING_VM_SSH_KEY }}
-          script: |
-            git clone https://github.com/${{ github.repository }}.git ~/app
-            cd ~/app
+            WORKSPACE=~/app_$(date +%s)
+            mkdir -p $WORKSPACE
+            git clone https://github.com/${{ github.repository }}.git $WORKSPACE
+            cd $WORKSPACE
             docker-compose down || true
             docker-compose up -d --build
+            ls -td ~/app_* | tail -n +4 | xargs rm -rf
 
   deploy-prod:
     name: Deploy to Production
@@ -123,26 +108,17 @@ jobs:
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
 
-      - name: Setup Deployment Directory
+      - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.PROD_VM_IP }}
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           script: |
-            mkdir -p ~/app
-            if [ -d "~/app" ]; then
-              rm -rf ~/app
-            fi
-
-      - name: Deploy Application
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.PROD_VM_IP }}
-          username: ${{ secrets.PROD_VM_USER }}
-          key: ${{ secrets.PROD_VM_SSH_KEY }}
-          script: |
-            git clone https://github.com/${{ github.repository }}.git ~/app
-            cd ~/app
+            WORKSPACE=~/app_$(date +%s)
+            mkdir -p $WORKSPACE
+            git clone https://github.com/${{ github.repository }}.git $WORKSPACE
+            cd $WORKSPACE
             docker-compose down || true
             docker-compose up -d --build
+            ls -td ~/app_* | tail -n +4 | xargs rm -rf
