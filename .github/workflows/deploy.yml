@@ -6,7 +6,6 @@ on:
     tags: ['v*']
 
 jobs:
-  # ====================== DEV (Automatic) ======================
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
@@ -21,10 +20,6 @@ jobs:
         with:
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
-          config: |
-            Host *
-              StrictHostKeyChecking no
-              UserKnownHostsFile=/dev/null
 
       - name: Deploy to Dev VM
         uses: appleboy/ssh-action@v1
@@ -33,25 +28,24 @@ jobs:
           username: ${{ secrets.DEV_VM_USER }}
           key: ${{ secrets.DEV_VM_SSH_KEY }}
           script: |
-            # Ensure directory exists with proper permissions
-            if [ ! -d "/var/www/app" ]; then
-              sudo mkdir -p /var/www/app
-              sudo chown -R $USER:$USER /var/www/app
+            # Create directory structure with proper permissions
+            sudo mkdir -p /var/www
+            sudo chown -R $USER:$USER /var/www
+            mkdir -p /var/www/app
+            
+            # Remove existing directory if it exists
+            if [ -d "/var/www/app" ]; then
+              rm -rf /var/www/app
             fi
             
-            # Clone or update repository
-            if [ ! -d "/var/www/app/.git" ]; then
-              git clone ${{ github.repository_url }} /var/www/app
-            fi
+            # Clone fresh repository
+            git clone https://github.com/${{ github.repository }}.git /var/www/app
             
             # Deploy application
             cd /var/www/app
-            git fetch origin
-            git reset --hard origin/main
-            docker-compose down
+            docker-compose down || true
             docker-compose up -d --build
 
-  # ====================== STAGING (Manual Approval) ======================
   deploy-staging:
     name: Deploy to Staging
     needs: deploy-dev
@@ -73,10 +67,6 @@ jobs:
         with:
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
-          config: |
-            Host *
-              StrictHostKeyChecking no
-              UserKnownHostsFile=/dev/null
 
       - name: Deploy to Staging VM
         uses: appleboy/ssh-action@v1
@@ -85,25 +75,19 @@ jobs:
           username: ${{ secrets.STAGING_VM_USER }}
           key: ${{ secrets.STAGING_VM_SSH_KEY }}
           script: |
-            # Ensure directory exists with proper permissions
-            if [ ! -d "/var/www/app" ]; then
-              sudo mkdir -p /var/www/app
-              sudo chown -R $USER:$USER /var/www/app
+            sudo mkdir -p /var/www
+            sudo chown -R $USER:$USER /var/www
+            mkdir -p /var/www/app
+            
+            if [ -d "/var/www/app" ]; then
+              rm -rf /var/www/app
             fi
             
-            # Clone or update repository
-            if [ ! -d "/var/www/app/.git" ]; then
-              git clone ${{ github.repository_url }} /var/www/app
-            fi
-            
-            # Deploy application
+            git clone https://github.com/${{ github.repository }}.git /var/www/app
             cd /var/www/app
-            git fetch origin
-            git reset --hard origin/main
-            docker-compose down
+            docker-compose down || true
             docker-compose up -d --build
 
-  # ====================== PROD (Manual Approval or Tag) ======================
   deploy-prod:
     name: Deploy to Production
     needs: deploy-staging
@@ -131,10 +115,6 @@ jobs:
         with:
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS || 'placeholder' }}
-          config: |
-            Host *
-              StrictHostKeyChecking no
-              UserKnownHostsFile=/dev/null
 
       - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1
@@ -143,20 +123,15 @@ jobs:
           username: ${{ secrets.PROD_VM_USER }}
           key: ${{ secrets.PROD_VM_SSH_KEY }}
           script: |
-            # Ensure directory exists with proper permissions
-            if [ ! -d "/var/www/app" ]; then
-              sudo mkdir -p /var/www/app
-              sudo chown -R $USER:$USER /var/www/app
+            sudo mkdir -p /var/www
+            sudo chown -R $USER:$USER /var/www
+            mkdir -p /var/www/app
+            
+            if [ -d "/var/www/app" ]; then
+              rm -rf /var/www/app
             fi
             
-            # Clone or update repository
-            if [ ! -d "/var/www/app/.git" ]; then
-              git clone ${{ github.repository_url }} /var/www/app
-            fi
-            
-            # Deploy application
+            git clone https://github.com/${{ github.repository }}.git /var/www/app
             cd /var/www/app
-            git fetch origin
-            git reset --hard origin/main
-            docker-compose down
+            docker-compose down || true
             docker-compose up -d --build
